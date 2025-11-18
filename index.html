@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>災害情報・公的情報源ハブ β版</title>
+
+    <style>
+        /* 1. 基本設定 */
+        :root {
+            --color-primary: #1a426f; /* JMAブルー */
+            --color-secondary: #ff5722; /* アクセントオレンジ */
+            --color-background: #e6edf2;
+            --color-surface: white;
+            --color-text: #333;
+            --color-border: #ccc;
+            --color-hover: #e6f7ff;
+            --color-terms: #ff9800;
+            --color-status-official: #28a745; /* 緑 */
+            --color-status-research: #007bff; /* 青 */
+            --color-status-media: #ffc107; /* 黄色 */
+            --color-status-infra: #00bcd4; /* シアン: インフラ用 */
+            --color-status-global: #673ab7; /* 紫: 国際/学会用 */
+            --color-alt-bg: #f5f5f5; /* 交互背景色 */
+            --color-collapse-header: #f0f0f0;
+        }
+
+        /* ダークモードテーマ */
+        .dark-mode {
+            --color-primary: #00bcd4; 
+            --color-secondary: #ffab40; 
+            --color-background: #1e1e1e;
+            --color-surface: #252526;
+            --color-text: #f0f0f0;
+            --color-border: #444;
+            --color-hover: #3a3a3a;
+            --color-terms: #ffab40;
+            --color-status-official: #28a745;
+            --color-status-research: #00bcd4;
+            --color-status-media: #ffab40;
+            --color-status-infra: #e0f7fa;
+            --color-status-global: #ba68c8;
+            --color-alt-bg: #2f2f2f; 
+            --color-collapse-header: #3a3a3a;
+        }
+
+        body {
+            font-family: 'メイリオ', Meiryo, '游ゴシック', 'Yu Gothic', sans-serif;
+            background-color: var(--color-background); 
+            margin: 0;
+            color: var(--color-text);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s, font-size 0.3s;
+            font-size: 16px;
+        }
+
+        /* 2. ヘッダーのデザイン */
+        header {
+            background-color: var(--color-primary); 
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            margin-bottom: 30px;
+        }
+
+        /* H1タイトルを新しい名前に変更 */
+        header h1 {
+            margin: 0;
+            font-size: 2.2em;
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        
+        #current-time {
+            font-size: 1.1em;
+            margin-top: 5px;
+            color: #ffcc00; /* 目立つ色 */
+        }
+
+        /* 3. ユーティリティ・コントロールパネル */
+        #utility-container {
+            padding: 15px 20px;
+            background-color: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+        
+        #control-panel {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        /* SELECTのスタイル */
+        #control-panel select {
+            background-color: var(--color-primary);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.0em;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        #control-panel select:hover {
+            background-color: #007bff;
+            transform: scale(1.02);
+        }
+        
+        #control-panel select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22white%22%20d%3D%22M287%2064.6c-4.1-4.1-10.7-4.1-14.8%200l-123%20123-123-123c-4.1-4.1-10.7-4.1-14.8%200-4.1%204.1-4.1%2010.7%200%2014.8l130.4%20130.4c2%202%204.6%203.1%207.4%203.1s5.4-1.1%207.4-3.1l130.4-130.4c4.1-4.1%204.1-10.7%200-14.8z%22%2F%3E%3C%2Fsvg%3E');
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 12px;
+            padding-right: 35px;
+        }
+        
+        #display-settings option[disabled] {
+            font-weight: bold;
+            color: #1a426f; 
+            background-color: #f0f0f0;
+        }
+        .dark-mode #display-settings option[disabled] {
+            color: #00bcd4; 
+            background-color: #3a3a3a;
+        }
+
+        /* 検索コンテナ */
+        #search-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #search-input {
+            width: 100%;
+            max-width: 700px;
+            padding: 12px 20px;
+            border: 2px solid var(--color-secondary);
+            border-radius: 25px;
+            font-size: 1.1em;
+            outline: none;
+            background-color: var(--color-background);
+            color: var(--color-text);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        #search-input:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
+        }
+
+        #result-count {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.9em;
+            color: var(--color-secondary);
+            background: var(--color-background);
+            padding: 2px 8px;
+            border-radius: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        /* 4. メインコンテンツのレイアウト */
+        .jma-style-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+        }
+        
+        /* 4-1. セクションの交互背景色 */
+        .menu-block {
+            padding: 0; /* paddingを削除して子要素で制御 */
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid var(--color-primary);
+            transition: transform 0.3s, box-shadow 0.3s;
+            overflow: hidden; /* 角丸に合わせて内容を隠す */
+        }
+        .menu-block:nth-child(odd) {
+            background-color: var(--color-surface);
+        }
+        .menu-block:nth-child(even) {
+            background-color: var(--color-alt-bg);
+        }
+
+        .menu-block:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        /* 5. アコーディオンヘッダー */
+        .block-header {
+            padding: 15px 25px;
+            background-color: var(--color-collapse-header);
+            color: var(--color-primary);
+            border-bottom: 2px solid var(--color-border);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        
+        .menu-block:nth-child(odd) .block-header {
+             background-color: var(--color-surface);
+        }
+        .menu-block:nth-child(even) .block-header {
+            background-color: var(--color-alt-bg);
+        }
+        
+        .block-header span.toggle-icon {
+            font-size: 1.2em;
+            transition: transform 0.3s;
+        }
+
+        .menu-block.collapsed .block-header span.toggle-icon {
+            transform: rotate(-90deg);
+        }
+        
+        /* 5-2. アコーディオンコンテンツ */
+        .block-content {
+            padding: 0 25px 25px 25px;
+            max-height: 1000px; /* 十分な高さを確保 */
+            overflow: hidden;
+            transition: max-height 0.5s ease-out, padding 0.5s ease-out;
+        }
+        
+        .menu-block.collapsed .block-content {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        .block-content .block-description {
+            font-size: 0.9em;
+            color: #777;
+            margin-top: 15px;
+            margin-bottom: 15px;
+            border-bottom: 1px dotted var(--color-border);
+            padding-bottom: 10px;
+        }
+        .dark-mode .block-content .block-description {
+            color: #ccc;
+        }
+
+
+        /* 6. リストとリンクのデザイン */
+        .menu-block ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .menu-block li {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background-color 0.2s;
+        }
+        
+        .menu-block li:last-child {
+            border-bottom: none;
+        }
+
+        .menu-block li a {
+            color: var(--color-text);
+            text-decoration: none;
+            font-weight: 500;
+            flex-grow: 1;
+            padding-right: 10px;
+            transition: color 0.2s;
+        }
+
+        .menu-block li a:hover {
+            color: var(--color-secondary);
+        }
+        
+        .menu-block li.hidden {
+            display: none !important;
+        }
+
+        /* 7. ステータスアイコン */
+        .link-status {
+            font-size: 0.9em;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+            color: white;
+            white-space: nowrap;
+        }
+
+        .status-official { background-color: var(--color-status-official); }
+        .status-research { background-color: var(--color-status-research); }
+        .status-media { background-color: var(--color-status-media); }
+        .status-infra { background-color: var(--color-status-infra); }
+        .status-global { background-color: var(--color-status-global); }
+        
+        .dark-mode .status-infra { color: var(--color-text); }
+
+
+        /* 8. カテゴリジャンプメニュー */
+        #jump-menu {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 15px 20px;
+            background-color: var(--color-surface);
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #jump-menu h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: var(--color-primary);
+        }
+
+        #category-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        #category-nav a {
+            text-decoration: none;
+            background-color: #f0f0f0;
+            color: var(--color-text);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .dark-mode #category-nav a {
+            background-color: #3a3a3a;
+            color: #f0f0f0;
+        }
+
+        #category-nav a:hover {
+            background-color: var(--color-secondary);
+            color: white;
+        }
+
+        /* 9. 利用規約 */
+        #terms-container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        #toggle-terms-button {
+            background-color: var(--color-terms);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.0em;
+            margin-bottom: 15px;
+            display: block;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+
+        #toggle-terms-button:hover {
+            background-color: #e68a00;
+        }
+
+        #terms-of-use {
+            background-color: var(--color-surface);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid var(--color-terms);
+            display: none;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+        }
+
+        #terms-of-use.visible {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .term-section {
+            color: var(--color-primary);
+            border-bottom: 1px dashed var(--color-border);
+            padding-bottom: 5px;
+            margin-top: 20px;
+        }
+        .term-list {
+            list-style: disc;
+            margin-left: 20px;
+            padding: 0;
+            font-size: 0.95em;
+        }
+
+
+        /* 10. フッター */
+        footer {
+            text-align: center;
+            padding: 20px;
+            background-color: var(--color-primary);
+            color: white;
+            margin-top: 30px;
+            font-size: 0.9em;
+        }
+        
+        /* 11. レスポンシブ調整 */
+        @media (max-width: 1000px) {
+            .jma-style-container {
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 20px;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .jma-style-container {
+                grid-template-columns: 1fr; 
+                padding: 0 15px;
+                gap: 15px;
+            }
+            header h1 {
+                font-size: 1.5em;
+            }
+            #search-input {
+                padding: 10px 15px;
+                font-size: 1.0em;
+            }
+            #utility-container {
+                padding: 10px 15px;
+            }
+            #control-panel {
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            #control-panel select {
+                width: 80%;
+                max-width: 400px;
+            }
+
+            #category-nav {
+                flex-direction: column;
+            }
+            .block-header {
+                font-size: 1.3em;
+            }
+            .block-content {
+                padding: 0 15px 15px 15px;
+            }
+        }
+    </style>
+</head>
+<body class="light-mode">
+
+    <header>
+        <h1>🇯🇵 災害情報・公的情報源ハブ β版</h1>
+        <div id="current-time">現在時刻: 2025年1月1日(水) 00:00:00 JST</div>
+    </header>
+    
+    <div id="utility-container">
+        
+        <div id="control-panel">
+            <select id="display-settings">
+                <option value="default" disabled selected>⚙️ 表示設定を選択...</option>
+                <option value="toggle-theme">🌙 テーマ切り替え（ダーク/ライト）</option>
+                <option value="font-16">フォントサイズ: 標準 (16px)</option>
+                <option value="font-18">フォントサイズ: 大 (18px)</option>
+                <option value="font-20">フォントサイズ: 特大 (20px)</option>
+                <option value="reload-toggle">🔄 自動リロード 開始/停止 (現在: 停止)</option>
+                <option value="collapse-all">🔽 全て折りたたむ</option>
+                <option value="expand-all">🔼 全て展開する</option>
+            </select>
+        </div>
+        
+        <div id="search-container">
+            <input type="text" id="search-input" placeholder="情報源を検索... (例: 活断層, JAEA, FEMA, JR東海, COVID-19)">
+            <span id="result-count">0件</span>
+        </div>
+    </div>
+    
+    <div id="jump-menu">
+        <h3>🚀 カテゴリへジャンプ (全13カテゴリ)</h3>
+        <nav id="category-nav"></nav>
+    </div>
+
+    <main class="jma-style-container" id="main-content">
+        <section class="menu-block" id="cat-core-realtime">
+            <div class="block-header">
+                <span>1. リアルタイム災害速報・公的機関コア</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="block-content">
+                <p class="block-description">国の中枢機関、気象庁、防災科研による、**生命に関わる緊急性の高い情報**（地震、津波、気象警報、避難勧告）です。</p>
+                <ul id="cat1">
+                    <li data-status="official"><a href="https://www.jma.go.jp/" target="_blank" data-keywords="気象庁 JMA top">気象庁（トップ）</a><span class="link-status status-official" title="公的機関">⚡️</span></li>
+                    <li data-status="official"><a href="https://www.jma.go.jp/bosai/map.html#contents=earthquake_map" target="_blank" data-keywords="地震情報 震度 jma">地震情報（震度速報）</a><span class="link-status status-official" title="公的機関">⚡️</span></li>
+                    <li data-status="official"><a href="https://www.jma.go.jp/bosai/map.html#contents=tsunami/" target="_blank" data-keywords="津波情報 警報 jma">津波情報・津波警報</a><span class="link-status status-official" title="公的機関">⚡️</span></li>
+                    <li data-status="research"><a href="https://www.kyoshin.bosai.go.jp/" target="_blank" data-keywords="NIED 強震モニタ bosai kyoshin">NIED 強震モニタ（リアルタイム）</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="official"><a href="https://www.jma.go.jp/bosai/warning/" target="_blank" data-keywords="気象警報 注意報 jma">気象警報・注意報</a><span class="link-status status-official" title="公的機関">⚡️</span></li>
+                    <li data-status="official"><a href="https://www.jma.go.jp/bosai/risk/#area_type=class10&threshold_type=5" target="_blank" data-keywords="キキクル 危険度分布 jma">キキクル（危険度分布）</a><span class="link-status status-official" title="公的機関">⚡️</span></li>
+                    <li data-status="official"><a href="https://www.bousai.go.jp/" target="_blank" data-keywords="内閣府 総合 bousai">内閣府 防災情報（総合）</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.fdma.go.jp/" target="_blank" data-keywords="消防庁 災害情報 fdma">消防庁 災害情報（全国状況）</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.kantei.go.jp/jp/headline/bousai/" target="_blank" data-keywords="首相官邸 総合 kantei">首相官邸 防災</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.jma.go.jp/bosai/volcano/" target="_blank" data-keywords="火山情報 噴火 jma">火山情報（噴火警戒レベル）</a><span class="link-status status-official" title="公的機関">⚡️</span></li>
+                    <li data-status="official"><a href="https://www.mlit.go.jp/saigai/" target="_blank" data-keywords="国土交通省 国交省 mlit">国土交通省 防災・災害情報</a><span class="link-status status-official" title="公的機関">🏛️</span></
+                    <li data-status="official"><a href="https://www.jma.go.jp/bosai/map.html#layers=dosha" target="_blank" data-keywords="土砂災害警戒情報 jma">土砂災害警戒情報</a><span class="link-status status-official" title="公的機関">⚡️</span></li>
+                    <li data-status="official"><a href="https://www.mlit.go.jp/river/bousai/pch-tec/about/index.html" target="_blank" data-keywords="TEC-FORCE 災害支援">TEC-FORCE 災害支援（国交省）</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.bousai.go.jp/kaigi/keikaku/index.html" target="_blank" data-keywords="防災基本計画">防災基本計画（内閣府）</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="menu-block" id="cat-infra-geo">
+            <div class="block-header">
+                <span>2. 地理・地盤・河川・ハザード情報</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="block-content">
+                <p class="block-description">地形、地盤、水害リスク、河川水位、ハザードマップなどの**地理的リスク情報**です。</p>
+                <ul id="cat2">
+                    <li data-status="infra"><a href="https://disaportal.gsi.go.jp/" target="_blank" data-keywords="ハザードマップポータル 浸水 土砂 gsi">ハザードマップポータル</a><span class="link-status status-infra" title="インフラ/専門">💧</span></li>
+                    <li data-status="infra"><a href="https://www.river.go.jp/" target="_blank" data-keywords="川の水位 リアルタイム 河川">川の防災情報（水位・雨量）</a><span class="link-status status-infra" title="インフラ/専門">💧</span></li>
+                    <li data-status="official"><a href="https://maps.gsi.go.jp/" target="_blank" data-keywords="地理院地図 災害履歴 gsi">地理院地図（災害履歴）</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="research"><a href="https://www.jmap.jp/" target="_blank" data-keywords="地盤情報 jmap 地質">地盤情報（J-MAP）</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.j-shis.bosai.go.jp/" target="_blank" data-keywords="J-SHIS 地震ハザードマップ">J-SHIS（地震ハザードマップ）</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="official"><a href="https://www.gsi.go.jp/BOUSAI/h29-kyushu-uprising.html" target="_blank" data-keywords="国土地理院 土地隆起">国土地理院 土地の隆起・沈降</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="research"><a href="https://www.pwri.go.jp/jpn/seika/bosai-joho/index.html" target="_blank" data-keywords="土木研究所 水害予測">土木研究所 水災害研究</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="official"><a href="https://www.jma.go.jp/jma/kishou/know/saigai/suigai/index.html" target="_blank" data-keywords="気象庁 水害 洪水予報">気象庁 水害・洪水予報</a><span class="link-status status-official" title="公的機関">⚡️</span></li>
+                    <li data-status="research"><a href="https://www.eri.u-tokyo.ac.jp/tokubetu-jisin/" target="_blank" data-keywords="地震研 活断層">東大地震研 活断層・長期評価</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="official"><a href="https://www.mlit.go.jp/saigai/dosha/index.html" target="_blank" data-keywords="国交省 土砂災害">国交省 土砂災害警戒情報</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="infra"><a href="https://www.water.go.jp/honsya/honsya/suiseisaku/tochi/gaiyou/index.html" target="_blank" data-keywords="深層地下水 観測">深層地下水観測ネットワーク</a><span class="link-status status-infra" title="インフラ/専門">💧</span></li>
+                    <li data-status="research"><a href="https://www.jps.gr.jp/bousai/index.html" target="_blank" data-keywords="日本写真測量学会 防災">日本写真測量学会 防災</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="official"><a href="https://www.r-info.mlit.go.jp/gis/" target="_blank" data-keywords="地理情報システム">国交省 地理情報システム（GIS）</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.jma.go.jp/jma/kishou/know/saigai/dojou_ame/index.html" target="_blank" data-keywords="気象庁 土壌雨量">気象庁 土壌雨量指数</a><span class="link-status status-official" title="公的機関">⚡️</span></li>
+                    <li data-status="research"><a href="https://www.dpri.kyoto-u.ac.jp/publication/r_jisin.html" target="_blank" data-keywords="京大 防災研 地震">京大防災研 地震活動報告</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="infra"><a href="https://www.pref.tokyo.lg.jp/kikikanri/bousai/saigai/tokei.html" target="_blank" data-keywords="東京都 災害統計">東京都 災害統計</a><span class="link-status status-infra" title="インフラ/専門">🏛️</span></li>
+                    <li data-status="infra"><a href="https://www.pref.osaka.lg.jp/dorogawa/saigai/index.html" target="_blank" data-keywords="大阪府 河川情報">大阪府 河川情報</a><span class="link-status status-infra" title="インフラ/専門">💧</span></li>
+                    <li data-status="infra"><a href="https://www.city.yokohama.lg.jp/bousai/" target="_blank" data-keywords="横浜市 防災">横浜市 防災情報</a><span class="link-status status-infra" title="インフラ/専門">🏛️</span></li>
+                </ul>
+            </div>
+        </section>
+        
+        <section class="menu-block" id="cat-transport">
+            <div class="block-header">
+                <span>3. 交通・運輸・海上・空路情報</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="block-content">
+                <p class="block-description">鉄道、道路、空路、海上の**運行状況や交通規制**に関する情報です。</p>
+                <ul id="cat3">
+                    <li data-status="infra"><a href="https://www.jartic.or.jp/" target="_blank" data-keywords="JARTIC 道路交通情報">JARTIC 道路交通情報（道路状況）</a><span class="link-status status-infra" title="インフラ/専門">🚗</span></li>
+                    <li data-status="infra"><a href="https://www.jr-odekake.net/" target="_blank" data-keywords="JR西日本 運行情報">JR西日本 運行情報</a><span class="link-status status-infra" title="インフラ/専門">🚄</span></li>
+                    <li data-status="infra"><a href="https://www.jreast.co.jp/" target="_blank" data-keywords="JR東日本 運行情報">JR東日本 運行情報</a><span class="link-status status-infra" title="インフラ/専門">🚄</span></li>
+                    <li data-status="infra"><a href="https://traininfo.jr-central.co.jp/" target="_blank" data-keywords="JR東海 運行情報">JR東海 運行情報</a><span class="link-status status-infra" title="インフラ/専門">🚄</span></li>
+                    <li data-status="infra"><a href="https://www.w-nexco.co.jp/traffic/" target="_blank" data-keywords="西日本高速道路 通行止 nexco">西日本高速道路 通行止情報</a><span class="link-status status-infra" title="インフラ/専門">🚗</span></li>
+                    <li data-status="infra"><a href="https://www.c-nexco.co.jp/traffic/" target="_blank" data-keywords="中日本高速道路 通行止 nexco">中日本高速道路 通行止情報</a><span class="link-status status-infra" title="インフラ/専門">🚗</span></li>
+                    <li data-status="infra"><a href="https://www.e-nexco.co.jp/road_info/" target="_blank" data-keywords="東日本高速道路 通行止 nexco">東日本高速道路 通行止情報</a><span class="link-status status-infra" title="インフラ/専門">🚗</span></li>
+                    <li data-status="official"><a href="https://www.mlit.go.jp/maritime/maritime_fr7_000032.html" target="_blank" data-keywords="海上保安庁 海難 気象">海上保安庁 海難・気象情報</a><span class="link-status status-official" title="公的機関">🌊</span></li>
+                    <li data-status="official"><a href="https://www.mlit.go.jp/koku/koku_tk5_000004.html" target="_blank" data-keywords="国土交通省 航空 koku">国土交通省 航空情報</a><span class="link-status status-official" title="公的機関">✈️</span></li>
+                    <li data-status="infra"><a href="https://www.tokyometro.jp/unkou/" target="_blank" data-keywords="東京メトロ 運行情報">東京メトロ 運行情報</a><span class="link-status status-infra" title="インフラ/専門">🚄</span></li>
+                    <li data-status="infra"><a href="https://www.jal.co.jp/jp/ja/flight/status/all/" target="_blank" data-keywords="JAL 運航状況">JAL 運航状況</a><span class="link-status status-infra" title="インフラ/専門">✈️</span></li>
+                    <li data-status="infra"><a href="https://www.ana.co.jp/fs/dom/jp/d_status.html" target="_blank" data-keywords="ANA 運航状況">ANA 運航状況</a><span class="link-status status-infra" title="インフラ/専門">✈️</span></li>
+                    <li data-status="infra"><a href="https://www.metoc.navy.mil/jtwc/" target="_blank" data-keywords="米軍台風センター JTWC 船舶">JTWC（米軍台風センター）</a><span class="link-status status-infra" title="インフラ/専門">🌊</span></li>
+                    <li data-status="infra"><a href="https://www.tokyo-airport-bousai.jp/" target="_blank" data-keywords="羽田空港 災害">羽田空港 災害対策</a><span class="link-status status-infra" title="インフラ/専門">✈️</span></li>
+                    <li data-status="official"><a href="https://www.police.pref.osaka.lg.jp/traffic/index.html" target="_blank" data-keywords="大阪府警 交通規制">大阪府警 交通規制情報</a><span class="link-status status-official" title="公的機関">🚗</span></li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="menu-block" id="cat-health">
+            <div class="block-header">
+                <span>4. 保健・医療・福祉・公衆衛生</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="block-content">
+                <p class="block-description">災害時の**医療、公衆衛生、福祉、食料安全**に関する公的情報源です。</p>
+                <ul id="cat4">
+                    <li data-status="official"><a href="https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000187998.html" target="_blank" data-keywords="厚生労働省 厚労省 医療 mhlw">厚生労働省 災害医療・衛生</a><span class="link-status status-official" title="公的機関">🏥</span></li>
+                    <li data-status="official"><a href="https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/hukushi_kaigo/saigai_fukushi.html" target="_blank" data-keywords="厚労省 災害福祉">厚労省 災害時福祉情報</a><span class="link-status status-official" title="公的機関">🏥</span></li>
+                    <li data-status="official"><a href="https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryou/saigai_iryou.html" target="_blank" data-keywords="DMAT活動状況">DMAT活動状況（厚労省）</a><span class="link-status status-official" title="公的機関">🏥</span></li>
+                    <li data-status="official"><a href="https://www.maff.go.jp/j/bousai/" target="_blank" data-keywords="農林水産省 食料 maff">農林水産省 防災対策</a><span class="link-status status-official" title="公的機関">🌾</span></li>
+                    <li data-status="research"><a href="https://www.niph.go.jp/" target="_blank" data-keywords="国立保健医療科学院 災害">国立保健医療科学院（災害時公衆衛生）</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="global"><a href="https://www.who.int/emergencies/disaster-risk-reduction" target="_blank" data-keywords="WHO 災害対策">WHO 災害リスク軽減</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="research"><a href="https://www.jikei.ac.jp/ouen/index.html" target="_blank" data-keywords="慈恵医大 災害医療">慈恵医大 災害医療センター</a><span class="link-status status-research" title="研究機関">🏥</span></li>
+                    <li data-status="official"><a href="https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000187999.html" target="_blank" data-keywords="厚労省 こころのケア 精神衛生">厚労省 災害時のこころのケア</a><span class="link-status status-official" title="公的機関">🏥</span></li>
+                    <li data-status="official"><a href="https://www.city.yokohama.lg.jp/kurashi/bosai-hisho/sonae/syoku/saigaishokuryou.html" target="_blank" data-keywords="横浜市 災害食">横浜市 災害食ガイド</a><span class="link-status status-official" title="公的機関">🌾</span></li>
+                    <li data-status="research"><a href="https://www.japa.org/publication/" target="_blank" data-keywords="日本栄養士会 災害栄養">日本栄養士会 災害栄養支援</a><span class="link-status status-research" title="研究機関">🌾</span></li>
+                    <li data-status="global"><a href="https://www.unicef.or.jp/bousai/" target="_blank" data-keywords="ユニセフ 災害支援">ユニセフ 災害支援（子ども）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="official"><a href="https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryou/saigai_yakkyoku.html" target="_blank" data-keywords="厚労省 災害時薬局">厚労省 災害時の薬局・薬剤師</a><span class="link-status status-official" title="公的機関">🏥</span></li>
+                    <li data-status="research"><a href="https://www.redcross.or.jp/activity/saigai/" target="_blank" data-keywords="日本赤十字社 赤十字">日本赤十字社 災害救護</a><span class="link-status status-research" title="研究機関">🏥</span></li>
+                    <li data-status="research"><a href="https://www.jamac.jp/" target="_blank" data-keywords="日本精神神経学会 災害">日本精神神経学会（災害時活動）</a><span class="link-status status-research" title="研究機関">🏥</span></li>
+                    <li data-status="official"><a href="https://www.maff.go.jp/j/syouan/saigai/" target="_blank" data-keywords="農水省 食品安全">農林水産省 食品安全対策</a><span class="link-status status-official" title="公的機関">🌾</span></li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="menu-block" id="cat-media-comm">
+            <div class="block-header">
+                <span>5. 報道・メディア・通信</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="block-content">
+                <p class="block-description">災害時の**情報発信、安否確認、通信インフラ**に関する主要メディアと公的情報源です。</p>
+                <ul id="cat5">
+                    <li data-status="official"><a href="https://www.nhk.or.jp/kishou-saigai/" target="_blank" data-keywords="NHK 災害 緊急報道">NHK ニュース・防災</a><span class="link-status status-official" title="公的機関">📺</span></li>
+                    <li data-status="official"><a href="https://www.ntt-east.co.jp/saigai/" target="_blank" data-keywords="NTT東日本 災害伝言">NTT東日本 災害対策</a><span class="link-status status-official" title="公的機関">📞</span></li>
+                    <li data-status="official"><a href="https://www.ntt-west.co.jp/saigai/" target="_blank" data-keywords="NTT西日本 災害伝言">NTT西日本 災害対策</a><span class="link-status status-official" title="公的機関">📞</span></li>
+                    <li data-status="media"><a href="https://www.yomiuri.co.jp/disaster/" target="_blank" data-keywords="読売新聞 災害">読売新聞 災害・防災ニュース</a><span class="link-status status-media" title="メディア">📰</span></li>
+                    <li data-status="media"><a href="https://www.asahi.com/saigai/" target="_blank" data-keywords="朝日新聞 災害">朝日新聞 災害・防災ニュース</a><span class="link-status status-media" title="メディア">📰</span></li>
+                    <li data-status="media"><a href="https://www.sankei.com/disaster/" target="_blank" data-keywords="産経新聞 災害">産経新聞 災害情報</a><span class="link-status status-media" title="メディア">📰</span></li>
+                    <li data-status="official"><a href="https://www.soumu.go.jp/bousai/" target="_blank" data-keywords="総務省 通信 bouai">総務省 災害対策（通信・放送）</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.jma.go.jp/jma/kishou/know/bosai/sns.html" target="_blank" data-keywords="気象庁 SNS">気象庁 ソーシャルメディア</a><span class="link-status status-official" title="公的機関">⚡️</span></li>
+                    <li data-status="infra"><a href="https://www.docomo.ne.jp/support/disaster/index.html" target="_blank" data-keywords="ドコモ 災害伝言板">ドコモ 災害対策</a><span class="link-status status-infra" title="インフラ/専門">📞</span></li>
+                    <li data-status="infra"><a href="https://www.au.com/mobile/information/disaster/message-board/" target="_blank" data-keywords="au 災害伝言板">au 災害対策</a><span class="link-status status-infra" title="インフラ/専門">📞</span></li>
+                    <li data-status="infra"><a href="https://www.softbank.jp/mobile/info/disaster/" target="_blank" data-keywords="ソフトバンク 災害伝言板">ソフトバンク 災害対策</a><span class="link-status status-infra" title="インフラ/専門">📞</span></li>
+                    <li data-status="media"><a href="https://www.chunichi.co.jp/tag/%E9%98%B2%E7%81%BD" target="_blank" data-keywords="中日新聞 地方 災害">中日新聞 防災・災害情報</a><span class="link-status status-media" title="メディア">📰</span></li>
+                    <li data-status="media"><a href="https://www.hokkaido-np.co.jp/list/bousai/" target="_blank" data-keywords="北海道新聞 地方 災害">北海道新聞 防災・災害情報</a><span class="link-status status-media" title="メディア">📰</span></li>
+                    <li data-status="official"><a href="https://www.soumu.go.jp/bousai/h_saigai/index.html" target="_blank" data-keywords="総務省 情報ハイウェイ">総務省 防災情報提供システム</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="media"><a href="https://www.jiji.com/jc/c?g=soc&k=bousai" target="_blank" data-keywords="時事通信 災害">時事通信 防災情報</a><span class="link-status status-media" title="メディア">📰</span></li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="menu-block" id="cat-global">
+            <div class="block-header">
+                <span>6. 国際機関・国際協力</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="block-content">
+                <p class="block-description">**世界の災害情報、国際的な枠組み、海外からの支援**に関する情報源です。</p>
+                <ul id="cat6">
+                    <li data-status="global"><a href="https://www.undrr.org/" target="_blank" data-keywords="UNDRR 国連 災害リスク軽減">UNDRR（国連防災機関）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.un.org/development/desa/undesa/sdgs.html" target="_blank" data-keywords="SDGs 国連 持続可能">SDGs（持続可能な開発目標）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.jica.go.jp/activities/issues/peace/saigai/index.html" target="_blank" data-keywords="JICA 国際協力 支援">JICA 国際協力（防災・復興）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.fema.gov/" target="_blank" data-keywords="FEMA アメリカ">FEMA（米連邦緊急事態管理庁）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.unisdr.org/sfa/jp/" target="_blank" data-keywords="仙台防災枠組">仙台防災枠組（UNDRR）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://reliefweb.int/" target="_blank" data-keywords="ReliefWeb 国際支援">ReliefWeb（国連OCHA）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.wmo.int/" target="_blank" data-keywords="WMO 世界気象機関">WMO（世界気象機関）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.gfz-potsdam.de/en/home/" target="_blank" data-keywords="GFZ ドイツ 地球科学">GFZ（ドイツ地球科学研究センター）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="research"><a href="https://www.panafricangeospatial.org/" target="_blank" data-keywords="PAIGC アフリカ 地理空間">PAIGC（汎アフリカ地理空間情報センター）</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="global"><a href="https://www.adrc.asia/" target="_blank" data-keywords="ADRC アジア防災センター">ADRC（アジア防災センター）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.icrc.org/en" target="_blank" data-keywords="ICRC 国際赤十字">ICRC（赤十字国際委員会）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.eartheconomics.org/disaster-risk" target="_blank" data-keywords="アースエコノミクス 災害">Earth Economics（災害リスク経済学）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.wfp.org/emergencies" target="_blank" data-keywords="WFP 世界食糧計画">WFP（世界食糧計画）緊急支援</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.emdat.be/" target="_blank" data-keywords="EM-DAT 国際災害データベース">EM-DAT（国際災害データベース）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.metoffice.gov.uk/" target="_blank" data-keywords="UK Met Office イギリス 気象">UK Met Office（イギリス気象庁）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.cwb.gov.tw/V8/E/" target="_blank" data-keywords="台湾 気象局">台湾中央気象局（CWA）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.jrc.ec.europa.eu/en" target="_blank" data-keywords="JRC 欧州合同研究センター">JRC（欧州合同研究センター）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.apcc21.org/eng/main/main.jsp" target="_blank" data-keywords="APCC アジア太平洋気候センター">APCC（アジア太平洋気候センター）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                </ul>
+            </div>
+        </section>
+        
+        <section class="menu-block" id="cat-research-academics">
+            <div class="block-header">
+                <span>7. 研究機関・専門学会・学会誌</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="block-content">
+                <p class="block-description">**地震、火山、津波、防災科学**を専門とする国内外の大学・研究機関・学会の情報です。</p>
+                <ul id="cat7">
+                    <li data-status="research"><a href="https://www.bosai.go.jp/e/" target="_blank" data-keywords="NIED 防災科研 英語">防災科学技術研究所（NIED）</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.eri.u-tokyo.ac.jp/" target="_blank" data-keywords="東京大学 地震研究所">東京大学 地震研究所（ERI）</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.dpri.kyoto-u.ac.jp/" target="_blank" data-keywords="京都大学 防災研究所">京都大学 防災研究所（DPRI）</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.geosociety.jp/bousai/" target="_blank" data-keywords="日本地質学会 防災">日本地質学会 防災委員会</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.jsce.or.jp/activities/committee/disaster/index.html" target="_blank" data-keywords="土木学会 防災">土木学会 防災委員会</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.j-geopark.org/geopark_disaster/" target="_blank" data-keywords="日本ジオパーク 災害">日本ジオパーク委員会 災害対応</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.jams.or.jp/disaster/" target="_blank" data-keywords="日本建築学会 災害">日本建築学会 災害委員会</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.seis.nagoya-u.ac.jp/research/" target="_blank" data-keywords="名古屋大学 地震 火山">名古屋大学 減災連携研究センター</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.jamstec.go.jp/j/about/saigai/" target="_blank" data-keywords="JAMSTEC 海洋研究 災害">海洋研究開発機構（JAMSTEC）</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.jrc.or.jp/study/saigai/" target="_blank" data-keywords="日本赤十字看護大学 災害">日赤看護大学 災害対策研究</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.jsdr.jp/" target="_blank" data-keywords="日本災害情報学会">日本災害情報学会</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.jceea.jp/news/disaster/index.html" target="_blank" data-keywords="日本地震工学会">日本地震工学会 災害対応</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.jssm.or.jp/disaster/" target="_blank" data-keywords="日本雪氷学会 災害">日本雪氷学会 防災・災害対応</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.jafes.gr.jp/bousai/index.html" target="_blank" data-keywords="日本火災学会 防災">日本火災学会 防災対応</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.jps.gr.jp/bousai/index.html" target="_blank" data-keywords="日本写真測量学会 防災">日本写真測量学会 防災</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.j-shis.bosai.go.jp/index.html" target="_blank" data-keywords="地震ハザードステーション">地震ハザードステーション（J-SHIS）</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.bosai.go.jp/e/bousai_portal/index.html" target="_blank" data-keywords="防災科研 防災ポータル">防災科研 防災ポータルサイト</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.eri.u-tokyo.ac.jp/study/earthquake-early-warning/" target="_blank" data-keywords="地震研 EEW">地震研 緊急地震速報</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.jams.or.jp/saigai_jirei.html" target="_blank" data-keywords="日本建築学会 災害事例">日本建築学会 災害事例報告</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.dpri.kyoto-u.ac.jp/research/activities/" target="_blank" data-keywords="京大 防災研 研究活動">京大防災研 研究活動</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="menu-block" id="cat-infrastructure">
+            <div class="block-header">
+                <span>8. ライフライン・インフラ</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="block-content">
+                <p class="block-description">**電力、ガス、水道**など、生活に不可欠なインフラの停止・復旧情報です。</p>
+                <ul id="cat8">
+                    <li data-status="infra"><a href="https://teideninfo.tepco.co.jp/html/index.html" target="_blank" data-keywords="東京電力 東電 teiden">東京電力（TEPCO）停電情報</a><span class="link-status status-infra" title="インフラ/専門">💡</span></li>
+                    <li data-status="infra"><a href="https://www.tohoku-epco.co.jp/teideninfo/" target="_blank" data-keywords="東北電力 停電">東北電力 停電情報</a><span class="link-status status-infra" title="インフラ/専門">💡</span></li>
+                    <li data-status="infra"><a href="https://www.chuden.co.jp/s_info/emergency/" target="_blank" data-keywords="中部電力 停電">中部電力 停電情報</a><span class="link-status status-infra" title="インフラ/専門">💡</span></li>
+                    <li data-status="infra"><a href="https://www.kepco.co.jp/utility/power/teiden/" target="_blank" data-keywords="関西電力 停電">関西電力 停電情報</a><span class="link-status status-infra" title="インフラ/専門">💡</span></li>
+                    <li data-status="infra"><a href="https://www.kyuden.co.jp/request/teiden/index.html" target="_blank" data-keywords="九州電力 停電">九州電力 停電情報</a><span class="link-status status-infra" title="インフラ/専門">💡</span></li>
+                    <li data-status="infra"><a href="https://www.hokuriku-epco.co.jp/teiden/" target="_blank" data-keywords="北陸電力 停電">北陸電力 停電情報</a><span class="link-status status-infra" title="インフラ/専門">💡</span></li>
+                    <li data-status="infra"><a href="https://www.denryoku.hokkaido-epco.co.jp/teiden_info/" target="_blank" data-keywords="北海道電力 停電">北海道電力 停電情報</a><span class="link-status status-infra" title="インフラ/専門">💡</span></li>
+                    <li data-status="infra"><a href="https://www.shikoku-epco.co.jp/teiden/" target="_blank" data-keywords="四国電力 停電">四国電力 停電情報</a><span class="link-status status-infra" title="インフラ/専門">💡</span></li>
+                    <li data-status="infra"><a href="https://www.chugoku-epco.co.jp/teiden/" target="_blank" data-keywords="中国電力 停電">中国電力 停電情報</a><span class="link-status status-infra" title="インフラ/専門">💡</span></li>
+                    <li data-status="infra"><a href="https://www.okinawa-electric.co.jp/teiden/" target="_blank" data-keywords="沖縄電力 停電">沖縄電力 停電情報</a><span class="link-status status-infra" title="インフラ/専門">💡</span></li>
+                    <li data-status="infra"><a href="https://www.tokyo-gas.co.jp/safety/saigai/" target="_blank" data-keywords="東京ガス 復旧">東京ガス 災害対策</a><span class="link-status status-infra" title="インフラ/専門">🔥</span></li>
+                    <li data-status="infra"><a href="https://osakagas.co.jp/saigai/" target="_blank" data-keywords="大阪ガス 復旧">大阪ガス 災害対策</a><span class="link-status status-infra" title="インフラ/専門">🔥</span></li>
+                    <li data-status="infra"><a href="https://www.tohogas.co.jp/saigai/" target="_blank" data-keywords="東邦ガス 復旧">東邦ガス 災害対策</a><span class="link-status status-infra" title="インフラ/専門">🔥</span></li>
+                    <li data-status="official"><a href="https://www.mlit.go.jp/policy/file000085.html" target="_blank" data-keywords="国交省 水道 復旧">国交省 水道復旧状況</a><span class="link-status status-official" title="公的機関">💧</span></li>
+                    <li data-status="infra"><a href="https://www.city.yokohama.lg.jp/kurashi/suido-kogyo/suido/saigai/" target="_blank" data-keywords="横浜市 水道 災害">横浜市 水道局 災害情報</a><span class="link-status status-infra" title="インフラ/専門">💧</span></li>
+                    <li data-status="infra"><a href="https://www.pref.osaka.lg.jp/suido/saigai/" target="_blank" data-keywords="大阪府 水道 災害">大阪府 水道局 災害情報</a><span class="link-status status-infra" title="インフラ/専門">💧</span></li>
+                    <li data-status="infra"><a href="https://www.japan-gas.or.jp/saigai/" target="_blank" data-keywords="日本ガス協会 災害">日本ガス協会 災害対策</a><span class="link-status status-infra" title="インフラ/専門">🔥</span></li>
+                    <li data-status="infra"><a href="https://www.jwwa.or.jp/saigai/" target="_blank" data-keywords="日本水道協会 災害">日本水道協会 災害情報</a><span class="link-status status-infra" title="インフラ/専門">💧</span></li>
+                    <li data-status="infra"><a href="https://www.jaea.go.jp/index.shtml" target="_blank" data-keywords="原子力機構 JAEA">日本原子力研究開発機構（JAEA）</a><span class="link-status status-infra" title="インフラ/専門">☢️</span></li>
+                    <li data-status="official"><a href="https://www.nsr.go.jp/saigai/" target="_blank" data-keywords="原子力規制委員会 NSR">原子力規制委員会 災害対応</a><span class="link-status status-official" title="公的機関">☢️</span></li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="menu-block" id="cat-space-remote">
+            <div class="block-header">
+                <span>9. 衛星・宇宙天気・リモートセンシング</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="block-content">
+                <p class="block-description">**災害状況把握のための衛星画像**、測位情報、宇宙天気などの情報源です。</p>
+                <ul id="cat9">
+                    <li data-status="research"><a href="https://www.eorc.jaxa.jp/ALOS/obs_event/index.htm" target="_blank" data-keywords="JAXA 衛星 ALOS 災害観測">JAXA 災害時観測情報</a><span class="link-status status-research" title="研究機関">🛰️</span></li>
+                    <li data-status="official"><a href="https://www.gsi.go.jp/BOUSAI/saigai-top.html" target="_blank" data-keywords="国土地理院 衛星観測">国土地理院 災害対応（リモセン）</a><span class="link-status status-official" title="公的機関">🛰️</span></li>
+                    <li data-status="research"><a href="https://hinata.nict.go.jp/" target="_blank" data-keywords="NICT 宇宙天気予報">NICT 宇宙天気予報センター</a><span class="link-status status-research" title="研究機関">🛰️</span></li>
+                    <li data-status="global"><a href="https://ceos.org/pages/disasters.html" target="_blank" data-keywords="CEOS 国際衛星">CEOS（国際地球観測衛星委員会）</a><span class="link-status status-global" title="国際機関">🛰️</span></li>
+                    <li data-status="global"><a href="https://www.unoosa.org/oosa/en/ourwork/disasters/index.html" target="_blank" data-keywords="UNOOSA 国連宇宙機関">UNOOSA（国連宇宙空間事務所）</a><span class="link-status status-global" title="国際機関">🛰️</span></li>
+                    <li data-status="research"><a href="https://www.jspacesystems.or.jp/jasp/index.html" target="_blank" data-keywords="日本宇宙フォーラム 衛星">日本宇宙フォーラム</a><span class="link-status status-research" title="研究機関">🛰️</span></li>
+                    <li data-status="research"><a href="https://www.pash.or.jp/" target="_blank" data-keywords="リモートセンシング学会">日本リモートセンシング学会</a><span class="link-status status-research" title="研究機関">🛰️</span></li>
+                    <li data-status="research"><a href="https://www.eri.u-tokyo.ac.jp/satellite/" target="_blank" data-keywords="地震研 衛星測地">地震研 衛星測地</a><span class="link-status status-research" title="研究機関">🛰️</span></li>
+                    <li data-status="official"><a href="https://www.jma.go.jp/jma/kishou/know/saigai/uzubou.html" target="_blank" data-keywords="気象庁 宇宙天気">気象庁 宇宙天気情報</a><span class="link-status status-official" title="公的機関">🛰️</span></li>
+                    <li data-status="global"><a href="https://www.nasa.gov/disasters/" target="_blank" data-keywords="NASA 災害対応">NASA 災害対応</a><span class="link-status status-global" title="国際機関">🛰️</span></li>
+                    <li data-status="official"><a href="https://www.gsi.go.jp/kihonjoho/standard-gsi.html" target="_blank" data-keywords="地理情報標準 GSI">国土地理院 地理情報標準</a><span class="link-status status-official" title="公的機関">🛰️</span></li>
+                    <li data-status="research"><a href="https://www.gsj.jp/" target="_blank" data-keywords="地質調査総合センター GSJ">地質調査総合センター（GSJ）</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.jtsunami-db.bosai.go.jp/" target="_blank" data-keywords="津波浸水 DB">津波浸水被害データベース</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.vrc.kyoto-u.ac.jp/" target="_blank" data-keywords="京大 火山研究センター">京大 火山研究センター</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="research"><a href="https://www.isgs.jp/en/" target="_blank" data-keywords="ISGS 地震測地">国際地震測地学会</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="menu-block" id="cat-environment">
+            <div class="block-header">
+                <span>10. 環境・放射能・環境アセスメント</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="block-content">
+                <p class="block-description">**放射能、PM2.5、環境汚染、環境アセスメント**など、複合災害リスクの情報源です。</p>
+                <ul id="cat10">
+                    <li data-status="official"><a href="https://www.nsr.go.jp/" target="_blank" data-keywords="原子力規制委員会 nsr">原子力規制委員会（NSR）</a><span class="link-status status-official" title="公的機関">☢️</span></li>
+                    <li data-status="official"><a href="https://www.rada.or.jp/radinfo/" target="_blank" data-keywords="放射線環境情報 rada">放射線環境情報（RADA）</a><span class="link-status status-official" title="公的機関">☢️</span></li>
+                    <li data-status="official"><a href="https://tenbou.nies.go.jp/pm25/" target="_blank" data-keywords="PM2.5 環境省">環境省 PM2.5 環境基準</a><span class="link-status status-official" title="公的機関">💨</span></li>
+                    <li data-status="official"><a href="https://www.env.go.jp/saigai/index.html" target="_blank" data-keywords="環境省 災害環境">環境省 災害環境対策</a><span class="link-status status-official" title="公的機関">💨</span></li>
+                    <li data-status="research"><a href="https://www.jnes.go.jp/seisaku/saigai.html" target="_blank" data-keywords="原子力安全基盤機構 JNES">原子力安全基盤機構（JNES）</a><span class="link-status status-research" title="研究機関">☢️</span></li>
+                    <li data-status="official"><a href="https://www.jma.go.jp/jma/kishou/know/sora/ozone.html" target="_blank" data-keywords="気象庁 オゾン層">気象庁 オゾン層・紫外線情報</a><span class="link-status status-official" title="公的機関">💨</span></li>
+                    <li data-status="research"><a href="https://www.iaea.org/topics/emergency-preparedness-and-response" target="_blank" data-keywords="IAEA 原子力 国際">IAEA（国際原子力機関）緊急対応</a><span class="link-status status-research" title="研究機関">☢️</span></li>
+                    <li data-status="research"><a href="https://www.aeaj.or.jp/disaster/" target="_blank" data-keywords="日本環境アセスメント協会">日本環境アセスメント協会 災害対応</a><span class="link-status status-research" title="研究機関">💨</span></li>
+                    <li data-status="official"><a href="https://www.env.go.jp/press/saigai_jissen.html" target="_blank" data-keywords="環境省 災害廃棄物">環境省 災害廃棄物対策</a><span class="link-status status-official" title="公的機関">💨</span></li>
+                    <li data-status="research"><a href="https://www.jafas.jp/disaster/" target="_blank" data-keywords="日本応用地質学会 災害">日本応用地質学会 災害対策</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="official"><a href="https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryou/seikatsu_eisei/index.html" target="_blank" data-keywords="厚労省 生活衛生">厚労省 生活衛生・水質</a><span class="link-status status-official" title="公的機関">💧</span></li>
+                    <li data-status="research"><a href="https://www.nies.go.jp/index.html" target="_blank" data-keywords="国立環境研究所 NIES">国立環境研究所（NIES）</a><span class="link-status status-research" title="研究機関">💨</span></li>
+                    <li data-status="official"><a href="https://www.mlit.go.jp/saigai/kankyo/" target="_blank" data-keywords="国交省 環境影響">国交省 環境影響評価</a><span class="link-status status-official" title="公的機関">💨</span></li>
+                    <li data-status="official"><a href="https://www.env.go.jp/chemi/index.html" target="_blank" data-keywords="環境省 化学物質">環境省 化学物質環境対策</a><span class="link-status status-official" title="公的機関">💨</span></li>
+                    <li data-status="research"><a href="https://www.jepc.or.jp/" target="_blank" data-keywords="原子力緊急事態支援組織 JEPC">原子力緊急事態支援組織（JEPC）</a><span class="link-status status-research" title="研究機関">☢️</span></li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="menu-block" id="cat-global-media">
+            <div class="block-header">
+                <span>11. 海外報道・速報・専門サイト</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="block-content">
+                <p class="block-description">**世界の災害・気象情報**や、海外の主要報道機関による速報です。（英語サイトを含む）</p>
+                <ul id="cat11">
+                    <li data-status="global"><a href="https://www.cbsnews.com/tag/disaster-news/" target="_blank" data-keywords="CBS 災害ニュース">CBS News Disaster</a><span class="link-status status-global" title="国際機関">📰</span></li>
+                    <li data-status="global"><a href="https://www.reuters.com/news/disasters" target="_blank" data-keywords="Reuters 災害ニュース">Reuters Disaster News</a><span class="link-status status-global" title="国際機関">📰</span></li>
+                    <li data-status="global"><a href="https://www.apnews.com/tag/disasters" target="_blank" data-keywords="AP通信 災害">Associated Press Disaster</a><span class="link-status status-global" title="国際機関">📰</span></li>
+                    <li data-status="global"><a href="https://www.nhc.noaa.gov/" target="_blank" data-keywords="NHC NOAA ハリケーン">NHC（米国立ハリケーンセンター）</a><span class="link-status status-global" title="国際機関">🌀</span></li>
+                    <li data-status="global"><a href="https://earthquake.usgs.gov/" target="_blank" data-keywords="USGS アメリカ 地震">USGS（米地質調査所）地震情報</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.bbc.com/news/topics/c1y0j6k6crdt/natural-disasters" target="_blank" data-keywords="BBC 災害ニュース">BBC Natural Disasters</a><span class="link-status status-global" title="国際機関">📰</span></li>
+                    <li data-status="global"><a href="https://www.accuweather.com/en/world-weather" target="_blank" data-keywords="AccuWeather 世界気象">AccuWeather World Weather</a><span class="link-status status-global" title="国際機関">🌀</span></li>
+                    <li data-status="global"><a href="https://www.jpl.nasa.gov/news/press_kits/earth-observing.php" target="_blank" data-keywords="JPL NASA 災害観測">JPL（NASA）地球観測</a><span class="link-status status-global" title="国際機関">🛰️</span></li>
+                    <li data-status="global"><a href="https://www.wunderground.com/global/jp" target="_blank" data-keywords="Weather Underground 世界気象">Weather Underground</a><span class="link-status status-global" title="国際機関">🌀</span></li>
+                    <li data-status="global"><a href="https://edition.cnn.com/world" target="_blank" data-keywords="CNN World News">CNN World News</a><span class="link-status status-global" title="国際機関">📰</span></li>
+                    <li data-status="global"><a href="https://www.smh.com.au/topic/natural-disasters-3h1" target="_blank" data-keywords="SMH オーストラリア 災害">Sydney Morning Herald Disaster</a><span class="link-status status-global" title="国際機関">📰</span></li>
+                    <li data-status="global"><a href="https://www.meteo.fr/en" target="_blank" data-keywords="Meteo France フランス 気象">Météo France（フランス気象庁）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://earth.esa.int/web/guest/home" target="_blank" data-keywords="ESA 欧州宇宙機関">ESA（欧州宇宙機関）地球観測</a><span class="link-status status-global" title="国際機関">🛰️</span></li>
+                    <li data-status="global"><a href="https://www.bom.gov.au/" target="_blank" data-keywords="BOM オーストラリア 気象">BOM（豪州気象局）</a><span class="link-status status-global" title="国際機関">🌍</span></li>
+                    <li data-status="global"><a href="https://www.eumetsat.int/" target="_blank" data-keywords="EUMETSAT 欧州気象衛星">EUMETSAT（欧州気象衛星開発機構）</a><span class="link-status status-global" title="国際機関">🛰️</span></li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="menu-block" id="cat-education">
+            <div class="block-header">
+                <span>12. 教育・啓発・歴史資料</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="block-content">
+                <p class="block-description">**防災教育、災害の歴史、防災士**資格など、長期的な防災力向上に役立つ情報源です。</p>
+                <ul id="cat12">
+                    <li data-status="official"><a href="https://www.bousai.go.jp/kyoiku/index.html" target="_blank" data-keywords="内閣府 防災教育">内閣府 防災教育・啓発</a><span class="link-status status-official" title="公的機関">📖</span></li>
+                    <li data-status="official"><a href="https://www.jma.go.jp/jma/kishou/know/saigai/index.html" target="_blank" data-keywords="気象庁 過去の災害">気象庁 過去の災害（資料）</a><span class="link-status status-official" title="公的機関">📖</span></li>
+                    <li data-status="research"><a href="https://www.j-dsa.or.jp/index.html" target="_blank" data-keywords="日本防災士会">日本防災士会</a><span class="link-status status-research" title="研究機関">🛡️</span></li>
+                    <li data-status="official"><a href="https://www.fdma.go.jp/relocation/data/bosai_si/index.html" target="_blank" data-keywords="消防庁 防災士">消防庁 防災士制度</a><span class="link-status status-official" title="公的機関">🛡️</span></li>
+                    <li data-status="official"><a href="https://www.pref.miyagi.jp/site/mirai-saigai/index.html" target="_blank" data-keywords="宮城県 震災伝承">宮城県 震災伝承（3.11）</a><span class="link-status status-official" title="公的機関">📖</span></li>
+                    <li data-status="research"><a href="https://www.dlab.kitasato-u.ac.jp/" target="_blank" data-keywords="北里大学 災害看護">北里大学 災害看護</a><span class="link-status status-research" title="研究機関">🏥</span></li>
+                    <li data-status="research"><a href="https://www.kyoto-bousai.or.jp/bousaishi/index.html" target="_blank" data-keywords="京都府 防災士">京都府 防災士ネットワーク</a><span class="link-status status-research" title="研究機関">🛡️</span></li>
+                    <li data-status="research"><a href="https://www.koshindo.net/index.html" target="_blank" data-keywords="広域防災">NPO法人 広域災害対策協議会</a><span class="link-status status-research" title="研究機関">🛡️</span></li>
+                    <li data-status="official"><a href="https://www.mlit.go.jp/report/press/mizukokudo15_hh_000109.html" target="_blank" data-keywords="国交省 災害図上訓練">国交省 災害図上訓練（DIG）</a><span class="link-status status-official" title="公的機関">📖</span></li>
+                    <li data-status="research"><a href="https://www.dpri.kyoto-u.ac.jp/publication/r_jisin.html" target="_blank" data-keywords="京大 災害史">京大防災研 災害史研究</a><span class="link-status status-research" title="研究機関">📖</span></li>
+                    <li data-status="official"><a href="https://www.jma.go.jp/jma/kishou/know/yobou/yobou1.html" target="_blank" data-keywords="気象庁 予報用語">気象庁 予報用語の解説</a><span class="link-status status-official" title="公的機関">⚡️</span></li>
+                    <li data-status="research"><a href="https://www.bosai.go.jp/workshop/" target="_blank" data-keywords="防災科研 ワークショップ">防災科研 ワークショップ・セミナー</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                    <li data-status="official"><a href="https://www.mlit.go.jp/saigai/jyoho/" target="_blank" data-keywords="国交省 災害情報伝達">国交省 災害情報伝達</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.pref.tottori.lg.jp/bousai/data/saigai_jirei/" target="_blank" data-keywords="鳥取県 災害事例">鳥取県 災害事例と教訓</a><span class="link-status status-official" title="公的機関">📖</span></li>
+                    <li data-status="research"><a href="https://www.i-bousai.or.jp/" target="_blank" data-keywords="防災情報機構">特定非営利活動法人 防災情報機構</a><span class="link-status status-research" title="研究機関">🛡️</span></li>
+                    <li data-status="research"><a href="https://www.kobe-shien.or.jp/" target="_blank" data-keywords="神戸 復興支援">神戸復興支援センター</a><span class="link-status status-research" title="研究機関">📖</span></li>
+                    <li data-status="official"><a href="https://www.jma.go.jp/jma/kishou/know/saigai/koukyou.html" target="_blank" data-keywords="気象庁 公共交通">気象庁と公共交通機関の連携</a><span class="link-status status-official" title="公的機関">⚡️</span></li>
+                    <li data-status="research"><a href="https://www.jsps.go.jp/j-bousai/index.html" target="_blank" data-keywords="日本学術振興会 防災">日本学術振興会 災害対応</a><span class="link-status status-research" title="研究機関">🔬</span></li>
+                </ul>
+            </div>
+        </section>
+        
+        <section class="menu-block" id="cat-local-gov">
+            <div class="block-header">
+                <span>13. 地方自治体・広域連携</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="block-content">
+                <p class="block-description">主要な都道府県や指定都市の**災害対策本部、広域連携協定**など、地域固有の情報源です。</p>
+                <ul id="cat13">
+                    <li data-status="official"><a href="https://www.bousai.metro.tokyo.lg.jp/index.html" target="_blank" data-keywords="東京都 防災 首都直下">東京都 防災ホームページ</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.pref.osaka.lg.jp/kikikanri/bousai/index.html" target="_blank" data-keywords="大阪府 防災">大阪府 防災・危機管理情報</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.city.nagoya.jp/bosaikiki/" target="_blank" data-keywords="名古屋市 防災">名古屋市 防災危機管理体制</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.pref.fukuoka.lg.jp/contents/bousai.html" target="_blank" data-keywords="福岡県 防災">福岡県 防災・危機管理</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.city.sapporo.jp/kikikanri/index.html" target="_blank" data-keywords="札幌市 防災">札幌市 防災・危機管理</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.pref.miyagi.jp/site/saigai/" target="_blank" data-keywords="宮城県 災害対策">宮城県 災害対策本部情報</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.city.kobe.lg.jp/a37775/kurashi/safety/bosai/index.html" target="_blank" data-keywords="神戸市 防災">神戸市 防災・危機管理</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.city.hiroshima.lg.jp/bousai/" target="_blank" data-keywords="広島市 防災">広島市 防災・緊急情報</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.city.sendai.jp/kikikanri/bousai/index.html" target="_blank" data-keywords="仙台市 防災">仙台市 防災・緊急情報</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="research"><a href="https://www.jafes.gr.jp/bousai/index.html" target="_blank" data-keywords="広域防災 広域支援">広域防災協定ネットワーク</a><span class="link-status status-research" title="研究機関">🛡️</span></li>
+                    <li data-status="official"><a href="https://www.city.saitama.lg.jp/001/010/017/001/index.html" target="_blank" data-keywords="さいたま市 防災">さいたま市 防災・危機管理</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.pref.chiba.lg.jp/bousai/index.html" target="_blank" data-keywords="千葉県 防災">千葉県 防災危機管理部</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.city.kawasaki.jp/index.html" target="_blank" data-keywords="川崎市 防災">川崎市 防災・安全</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.pref.niigata.lg.jp/bousai/" target="_blank" data-keywords="新潟県 防災">新潟県 防災・危機管理</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.pref.aichi.jp/soshiki/bousai/" target="_blank" data-keywords="愛知県 防災">愛知県 防災対策課</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.pref.hyogo.lg.jp/bousai/index.html" target="_blank" data-keywords="兵庫県 防災">兵庫県 防災・危機管理</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.pref.hiroshima.lg.jp/soshiki/71/" target="_blank" data-keywords="広島県 防災">広島県 防災課</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.pref.kumamoto.jp/soshiki/26/index.html" target="_blank" data-keywords="熊本県 防災">熊本県 防災・危機管理</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.city.fukuoka.lg.jp/bousai/" target="_blank" data-keywords="福岡市 防災">福岡市 防災・安全</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                    <li data-status="official"><a href="https://www.pref.okinawa.jp/site/kikikanri/index.html" target="_blank" data-keywords="沖縄県 防災">沖縄県 防災危機管理課</a><span class="link-status status-official" title="公的機関">🏛️</span></li>
+                </ul>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="terms-container">
+        <button id="toggle-terms-button">ℹ️ このサイトハブの利用上の注意 (クリックで開閉)</button>
+        <div id="terms-of-use">
+            <h2 class="term-section">本ハブの目的と利用規約</h2>
+            <p>この「災害情報・公的情報源ハブ」は、**非常時**に公的機関・専門機関の情報を迅速かつ横断的に確認するためのツールとして設計されています。全てのリンクは新しいタブで開きます。</p>
+            <h2 class="term-section">⚠️ 免責事項と利用上の注意</h2>
+            <ul class="term-list">
+                <li>**自己責任:** 本ハブの利用は、ユーザー自身の判断と責任において行ってください。</li>
+                <li>**情報の信頼性:** リンク先は、公的機関、専門研究機関、主要な報道機関を選定していますが、情報の正確性や最新性は各リンク先の提供者に依存します。</li>
+                <li>**URLの変更:** リンク先のURLは変更または廃止される可能性があります。</li>
+                <li>**推奨環境:** PCまたは大画面のタブレットでの使用を推奨します。スマートフォンでも使用可能ですが、視認性を確保するため画面を横向きにすることを推奨します。</li>
+                <li>**非公式ツール:** 本ツールは、私的な情報整理ツールであり、いかなる公的機関や報道機関とも関係ありません。</li>
+                <li>**自動リロードの注意:** 自動リロード機能（オプション）を使用する場合、頻繁なアクセスは各サイトへの負荷となるため、設定には十分ご注意ください。</li>
+            </ul>
+            <h2 class="term-section">凡例 (アイコンとステータス)</h2>
+            <ul class="term-list">
+                <li>⚡️: リアルタイム速報・緊急情報 (気象庁など)</li>
+                <li>🏛️: 中央官庁・公的機関 (内閣府、国交省など)</li>
+                <li>🔬: 研究機関・学会 (NIED、東大地震研など)</li>
+                <li>📰: 主要報道機関・メディア</li>
+                <li>🚗/🚄/📞/💡/💧/🔥: 交通、通信、ライフラインインフラ</li>
+                <li>🌍/🌀: 国際機関・海外情報</li>
+                <li>🛡️/📖: 教育・啓発・資格</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer>
+        <p>災害情報・公的情報源ハブ β版 (V4.0 FINAL EXTREME Structure) | 最終更新: 2025年11月18日</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const mainContent = document.getElementById('main-content');
+            const searchInput = document.getElementById('search-input');
+            const resultCount = document.getElementById('result-count');
+            const displaySettings = document.getElementById('display-settings');
+            const termsButton = document.getElementById('toggle-terms-button');
+            const termsOfUse = document.getElementById('terms-of-use');
+            const body = document.body;
+            const categoryNav = document.getElementById('category-nav');
+            const blocks = document.querySelectorAll('.menu-block');
+            const timeDisplay = document.getElementById('current-time');
+            let reloadInterval = null;
+
+            // --- 1. 時刻表示機能 ---
+            function updateTime() {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.getMonth() + 1;
+                const day = now.getDate();
+                const week = ['日', '月', '火', '水', '木', '金', '土'][now.getDay()];
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                timeDisplay.textContent = `現在時刻: ${year}年${month}月${day}日(${week}) ${hours}:${minutes}:${seconds} JST`;
+            }
+            setInterval(updateTime, 1000);
+            updateTime(); // 初期表示
+
+            // --- 2. カテゴリジャンプメニュー作成機能 ---
+            function createJumpMenu() {
+                blocks.forEach(block => {
+                    const header = block.querySelector('.block-header span:first-child').textContent;
+                    const id = block.id;
+                    const link = document.createElement('a');
+                    link.href = `#${id}`;
+                    link.textContent = header;
+                    categoryNav.appendChild(link);
+                });
+            }
+            createJumpMenu();
+
+            // --- 3. 検索機能 ---
+            function filterLinks(query) {
+                const lowerQuery = query.toLowerCase().trim();
+                let matchCount = 0;
+
+                blocks.forEach(block => {
+                    const listItems = block.querySelectorAll('li');
+                    let blockMatchCount = 0;
+                    
+                    listItems.forEach(item => {
+                        const linkText = item.querySelector('a').textContent.toLowerCase();
+                        const keywords = item.querySelector('a').dataset.keywords.toLowerCase();
+                        
+                        if (linkText.includes(lowerQuery) || keywords.includes(lowerQuery) || lowerQuery === "") {
+                            item.classList.remove('hidden');
+                            blockMatchCount++;
+                        } else {
+                            item.classList.add('hidden');
+                        }
+                    });
+
+                    // 検索時はマッチするリンクがないブロックを非表示にする
+                    if (query !== "") {
+                        if (blockMatchCount > 0) {
+                            block.style.display = 'block';
+                            // 検索時は強制的に展開
+                            block.classList.remove('collapsed');
+                        } else {
+                            block.style.display = 'none';
+                        }
+                        matchCount += blockMatchCount;
+                    } else {
+                        // クエリがない場合はすべて表示
+                        block.style.display = 'block';
+                        // 元の折りたたみ状態に戻すか、デフォルトの展開状態を維持
+                    }
+                });
+
+                // 結果件数の表示
+                if (query !== "") {
+                    resultCount.textContent = `${matchCount}件`;
+                    resultCount.style.opacity = '1';
+                } else {
+                    resultCount.style.opacity = '0';
+                }
+            }
+
+            searchInput.addEventListener('input', (event) => {
+                filterLinks(event.target.value);
+            });
+
+            // --- 4. アコーディオン機能 ---
+            blocks.forEach(block => {
+                const header = block.querySelector('.block-header');
+                const content = block.querySelector('.block-content');
+                
+                // 初期状態を折りたたみに設定 (ただし最初の2つは展開)
+                if (!block.id.includes('cat-core-realtime') && !block.id.includes('cat-infra-geo')) {
+                    block.classList.add('collapsed');
+                }
+
+                header.addEventListener('click', () => {
+                    block.classList.toggle('collapsed');
+                });
+            });
+
+
+            // --- 5. ユーティリティ機能 ---
+            displaySettings.addEventListener('change', (event) => {
+                const value = event.target.value;
+
+                switch (value) {
+                    case 'toggle-theme':
+                        // テーマ切り替え
+                        body.classList.toggle('dark-mode');
+                        body.classList.toggle('light-mode');
+                        break;
+                    case 'font-16':
+                    case 'font-18':
+                    case 'font-20':
+                        // フォントサイズ変更
+                        body.style.fontSize = value.split('-')[1] + 'px';
+                        break;
+                    case 'reload-toggle':
+                        // 自動リロードの切り替え
+                        if (reloadInterval) {
+                            clearInterval(reloadInterval);
+                            reloadInterval = null;
+                            event.target.textContent = '🔄 自動リロード 開始/停止 (現在: 停止)';
+                        } else {
+                            // 5分（300,000ミリ秒）ごとにリロード
+                            reloadInterval = setInterval(() => {
+                                window.location.reload();
+                            }, 300000); 
+                            event.target.textContent = '🔄 自動リロード 開始/停止 (現在: 実行中)';
+                            alert('5分ごとの自動リロードを開始しました。ページ遷移や検索を行うと停止します。');
+                        }
+                        break;
+                    case 'collapse-all':
+                        blocks.forEach(block => block.classList.add('collapsed'));
+                        break;
+                    case 'expand-all':
+                        blocks.forEach(block => block.classList.remove('collapsed'));
+                        break;
+                }
+                
+                // 選択をデフォルトに戻す (連続使用可能にするため)
+                event.target.value = 'default';
+            });
+
+            // --- 6. 利用規約の開閉機能 ---
+            termsButton.addEventListener('click', () => {
+                termsOfUse.classList.toggle('visible');
+            });
+        });
+    </script>
+</body>
+</html>
